@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prompt Builder</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="topbar">
+  <h1>Prompt Builder</h1>
+  <p class="subtitle">Runs entirely in your browser. No server, no account, no analytics, no tracking — see Settings → Privacy.</p>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button type="button" class="tab-btn active" data-tab="roller">Roller</button>
+  <button type="button" class="tab-btn" data-tab="presets">Presets</button>
+  <button type="button" class="tab-btn" data-tab="characters">Characters</button>
+  <button type="button" class="tab-btn" data-tab="preview">Preview</button>
+  <button type="button" class="tab-btn" data-tab="library">Tag Library</button>
+  <button type="button" class="tab-btn" data-tab="removed">Removed</button>
+  <button type="button" class="tab-btn" data-tab="settings">Settings</button>
+  <button type="button" class="tab-btn" data-tab="ai">Ask AI <span class="experimental-badge">experimental</span></button>
+</nav>
+
+<main>
+
+  <section id="tab-roller" class="pane active">
+    <h2>Random Roller</h2>
+    <p class="muted">Rolls tags per category from a curated set, topped up with the full tag database. Use + / − on a row to add or remove slots (up to 6), or ↑ / ↓ to reorder sections. Lock the ones you like, then re-roll the rest.</p>
+    <div class="roller-top-actions">
+      <button type="button" id="roller-roll">Roll</button>
+      <button type="button" id="roller-add-locked" class="add-locked-btn">Add all locked to tray</button>
+    </div>
+    <div class="roller-top-actions roll-character-bar">
+      <label for="roll-character-select" class="roll-character-label">Roll with character</label>
+      <select id="roll-character-select">
+        <option value="">No character selected</option>
+      </select>
+      <button type="button" id="roll-with-character" disabled>Roll with character</button>
+      <span id="roll-character-hint" class="muted" style="font-size:.8rem;">No saved characters yet — add one in the Characters tab.</span>
+    </div>
+    <p class="muted" id="roll-character-explain" style="font-size:.85rem;" hidden>
+      Rolls all ten sections as normal, then adds your selected character's base tags alongside the result.
+      Base tags stay fixed — only the sections around them change. Plain <strong>Roll</strong> above never includes a character.
+    </p>
+    <div id="roller-rows" class="roller-rows"></div>
+    <div class="roller-actions">
+      <button type="button" id="roller-copy">Copy all</button>
+      <button type="button" id="roller-save">Save this roll</button>
+    </div>
+
+    <h3>Roll history</h3>
+    <div class="roller-actions">
+      <button type="button" id="history-clear" class="danger-btn">Clear history</button>
+    </div>
+    <div id="history-list" class="history-list"></div>
+    <p id="history-empty" class="muted" hidden>No rolls saved to history yet.</p>
+  </section>
+
+  <section id="tab-presets" class="pane">
+    <h2>Presets</h2>
+    <p class="muted">Save a whole Roller setup — slot counts, current tags, locks — under a name, and load it back any time.</p>
+    <div class="roller-actions">
+      <input type="text" id="preset-name-input" placeholder="Name this setup…" maxlength="60" style="flex:1 1 220px;">
+      <button type="button" id="preset-save">Save current as preset</button>
+    </div>
+    <div id="presets-list" class="presets-list"></div>
+    <p id="presets-empty" class="muted" hidden>No presets saved yet.</p>
+  </section>
+
+  <section id="tab-characters" class="pane">
+    <h2>Characters</h2>
+    <p class="muted">Save a reusable base character prompt. Character tags are private to this browser, start empty in every fresh download, and are never included in a normal prompt unless you add or select one. The mature-content setting in Settings controls whether a character's mature tags enter the tray — turning it on never excludes anything, and this never edits or deletes tags inside the saved character itself.</p>
+    <div class="character-editor">
+      <label>Character name <input type="text" id="character-name-input" placeholder="e.g. Main OC" maxlength="60"></label>
+      <label>Base tags <textarea id="character-tags-input" rows="4" placeholder="One tag per line, or comma-separated. These are the stable tags for this character."></textarea></label>
+      <label>Private notes (optional) <textarea id="character-note-input" rows="2" placeholder="A reminder for you. Notes are never added to the prompt."></textarea></label>
+      <div class="roller-actions">
+        <button type="button" id="character-save">Save character</button>
+        <button type="button" id="character-cancel-edit" hidden>Cancel edit</button>
+      </div>
+    </div>
+    <h3>Saved characters</h3>
+    <div id="characters-list" class="characters-list"></div>
+    <p id="characters-empty" class="muted" hidden>No saved characters yet. Add one above when you want a reusable base prompt.</p>
+  </section>
+
+  <section id="tab-preview" class="pane">
+    <h2>Prompt Preview</h2>
+    <p class="muted">A live, bigger view of your tray. "LLM-style description" is built locally from your tags — <strong>not an AI call</strong>, needs no key, works offline. For an actual AI-written prompt, use the separate Ask AI tab with your own key.</p>
+    <div class="preview-modes">
+      <button type="button" class="preview-mode-btn" data-preview-mode="tags">Tags</button>
+      <button type="button" class="preview-mode-btn" data-preview-mode="llm">LLM-style description</button>
+      <button type="button" class="preview-mode-btn" data-preview-mode="both">Both</button>
+    </div>
+    <div id="preview-content" class="preview-content"></div>
+    <div class="roller-actions">
+      <button type="button" id="preview-copy">Copy shown</button>
+      <button type="button" id="preview-download">Download .txt</button>
+    </div>
+    <h3>More export formats</h3>
+    <p class="muted">Every export below reads only your tray — never your API key, shortcuts, or anything else from Settings.</p>
+    <div class="roller-actions">
+      <button type="button" id="export-tags-txt">Tags (.txt)</button>
+      <button type="button" id="export-llm-txt">LLM-style (.txt)</button>
+      <button type="button" id="export-both-txt">Both (.txt)</button>
+      <button type="button" id="export-grouped-json">Grouped by section (.json)</button>
+    </div>
+  </section>
+
+  <section id="tab-library" class="pane">
+    <h2>Tag Library</h2>
+    <p class="muted"><span id="library-count">0</span> tags shown. Hiding a tag removes it from the Roller and search here — find it again any time under Removed.</p>
+    <div class="library-controls">
+      <input type="search" id="library-search" placeholder="Search tags… (also matches aliases)" autocomplete="off">
+      <select id="library-category">
+        <option value="">All categories</option>
+        <option value="general">General</option>
+        <option value="character">Character</option>
+        <option value="copyright">Copyright / series</option>
+        <option value="artist">Artist</option>
+        <option value="meta">Meta</option>
+      </select>
+      <select id="library-section">
+        <option value="">Any section</option>
+        <option value="unassigned">Unassigned</option>
+      </select>
+      <label class="checkbox-row" style="margin:0;"><input type="checkbox" id="library-fav-only"> ★ Favourites only</label>
+    </div>
+    <div id="library-list" class="tag-list"></div>
+    <button type="button" id="library-more" class="more-btn" hidden>Show more</button>
+  </section>
+
+  <section id="tab-removed" class="pane">
+    <h2>Removed</h2>
+    <p class="muted">Tags you've hidden, blocked, or deleted on this device. Hidden and Blocked can be restored any time. Deleted tags are gone for good, on this device — there's no undo for those inside the app.</p>
+    <h3>Hidden</h3>
+    <div id="hidden-list" class="tag-list"></div>
+    <p id="hidden-empty" class="muted" hidden>Nothing hidden yet.</p>
+    <h3>Blocked <span class="muted" style="font-size:.75rem;">(searchable, never rolled)</span></h3>
+    <div id="blocked-list" class="tag-list"></div>
+    <p id="blocked-empty" class="muted" hidden>Nothing blocked yet.</p>
+    <h3>Deleted permanently</h3>
+    <div id="deleted-list" class="tag-list"></div>
+    <p id="deleted-empty" class="muted" hidden>Nothing deleted yet.</p>
+  </section>
+
+  <section id="tab-settings" class="pane">
+    <h2>Settings</h2>
+
+    <h3>Content filtering</h3>
+    <p class="muted">The tag database has no built-in safe/mature rating, so this is a <strong>best-effort</strong> filter using a hand-maintained keyword list — not a guarantee. Off by default on every fresh copy of this app.</p>
+    <label class="checkbox-row"><input type="checkbox" id="nsfw-enabled"> Allow mature/NSFW tags in the Roller, Tag Library, and Ask AI results</label>
+
+    <h3>Favourites</h3>
+    <label>Favourite weight (how many extra times a favourited tag can roll)
+      <select id="fav-weight-select">
+        <option value="2">2×</option>
+        <option value="3">3× (default)</option>
+        <option value="5">5×</option>
+        <option value="10">10×</option>
+      </select>
+    </label>
+
+    <h3>Roll history</h3>
+    <label>Keep the last
+      <select id="history-size-select">
+        <option value="10">10 rolls</option>
+        <option value="25">25 rolls</option>
+        <option value="40">40 rolls (default)</option>
+      </select>
+    </label>
+
+    <h3>Prompt preview</h3>
+    <label>Default view when opening the Preview tab
+      <select id="default-preview-select">
+        <option value="tags">Tags</option>
+        <option value="llm">LLM-style description</option>
+        <option value="both">Both</option>
+      </select>
+    </label>
+
+    <h3>Keyboard shortcuts</h3>
+    <p class="muted">Turn shortcuts on or off, and set your own keys for each action. Shortcuts never fire while you're typing in a search box, text box, or dropdown.</p>
+    <label class="checkbox-row"><input type="checkbox" id="shortcuts-enabled"> Enable keyboard shortcuts</label>
+    <div id="shortcuts-list" class="shortcuts-list"></div>
+    <div class="roller-actions">
+      <button type="button" id="shortcuts-restore-defaults">Restore default shortcuts</button>
+    </div>
+
+    <h3>Backup &amp; reset</h3>
+    <p class="muted">Everything in this app — hidden/deleted tags, your tray, section edits, shortcuts — lives only in this browser. Export a backup before clearing your browser data, or to move your setup to another computer. API keys are never included in an export.</p>
+    <div class="roller-actions">
+      <button type="button" id="data-export">Export my changes</button>
+      <button type="button" id="data-import">Import a backup</button>
+      <input type="file" id="data-import-file" accept="application/json" hidden>
+      <button type="button" id="data-reset" class="danger-btn">Reset everything</button>
+    </div>
+
+    <h3>Privacy</h3>
+    <p class="muted">
+      This tool runs entirely in your browser. There is no server, no account, no analytics, and nothing tracking you or anyone else who opens this page.
+      Your tags, characters, presets, history, and settings are saved only on this device, using your browser's own local storage — they are never sent anywhere.
+      The optional Ask AI tab is the only part of this app that ever contacts the internet, and only when you type in your own key and press Ask — sent straight from your browser to the provider you picked, never through this site.
+      Hosting a page like this one may still involve ordinary web-hosting records (such as your IP address) kept by whoever hosts it, under their own policy — that is normal for any website and outside this app's control.
+    </p>
+    <p class="muted">Want a clean slate, or handing this device to someone else? This clears every saved tag, character, preset, and setting from this browser — it cannot see or touch anything on any other device.</p>
+    <div class="roller-actions">
+      <button type="button" id="privacy-wipe" class="danger-btn">Delete all my local data</button>
+    </div>
+  </section>
+
+  <section id="tab-ai" class="pane">
+    <h2>Ask AI <span class="experimental-badge">experimental</span></h2>
+    <p class="muted">Describe an idea, and an AI you connect yourself turns it into tags sorted into the categories above. This needs your own API key from a provider — nothing is included or paid for by this app.</p>
+    <p class="ai-warning">⚠ This may not work. Browsers often block a web page from calling an AI service directly for security reasons (this is called CORS). If you see a network error below, that's what's happening — it's not something this app can fix from here.</p>
+
+    <div class="ai-settings">
+      <label>Provider
+        <select id="ai-provider">
+          <option value="deepseek">DeepSeek</option>
+          <option value="openai">OpenAI</option>
+          <option value="custom">Custom (OpenAI-compatible)</option>
+        </select>
+      </label>
+      <label>API endpoint <input type="text" id="ai-endpoint" placeholder="https://api.deepseek.com/chat/completions"></label>
+      <label>Model <input type="text" id="ai-model" placeholder="deepseek-chat"></label>
+      <label>API key <input type="password" id="ai-key" placeholder="Your own key — never shared, never bundled"></label>
+      <p class="muted">Your key is kept only in this open tab's memory. It is never saved to this browser, never sent anywhere except directly to the provider you chose above, and it's cleared the moment you close or refresh this page. You'll need to paste it in again next time — that's deliberate, since this is a public site anyone can open.</p>
+    </div>
+
+    <textarea id="ai-input" placeholder="Describe an idea, e.g. 'shy outfit at night with city lights'" rows="3"></textarea>
+    <div class="roller-actions">
+      <button type="button" id="ai-go">Ask</button>
+    </div>
+    <p id="ai-status" class="muted"></p>
+    <div id="ai-result" class="ai-result" hidden></div>
+  </section>
+
+</main>
+
+<footer class="tray-bar">
+<div class="tray-label">TRAY</div>
+<div id="tray-content" class="tray-content">Nothing picked yet.</div>
+<div class="tray-actions">
+  <button type="button" id="tray-undo" title="Undo the last change" hidden>↶ Undo</button>
+  <button type="button" id="tray-copy">Copy</button>
+  <button type="button" id="tray-clear">Clear</button>
+</div>
+</footer>
+
+<div id="toast" class="toast" hidden></div>
+
+<div id="confirm-dialog" class="confirm-overlay" hidden>
+  <div class="confirm-box">
+    <p id="confirm-message"></p>
+    <div class="roller-actions">
+      <button type="button" id="confirm-yes" class="danger-btn">Yes, do it</button>
+      <button type="button" id="confirm-no">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script src="slots.js"></script>
+<script src="sections.js"></script>
+<script src="mature-filter.js"></script>
+<script src="aliases.js"></script>
+<script src="migrations.js"></script>
+<script src="storage.js"></script>
+<script src="undo.js"></script>
+<script src="favourites.js"></script>
+<script src="history.js"></script>
+<script src="presets.js"></script>
+<script src="characters.js"></script>
+<script src="exports.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
